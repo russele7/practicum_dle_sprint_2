@@ -39,7 +39,6 @@ pip install -r requirements.txt
 ```
 
 ## Запустите в созданном окружении ноутбук solution.ipynb с реализованным пайплайном
-https://docs.docker.com/engine/install/
 
 ## Наслаждайтесь
 
