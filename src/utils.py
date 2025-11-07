@@ -97,9 +97,11 @@ def train_model(model,
                 criterion,
                 device,
                 n_epochs=2,
-                max_train_batches_in_epoch=10000,
-                max_evalacc_batches_in_epoch=1000,
-                max_evalrouge_steps_count=100,):
+                rouge_min_input_seq_len=15,
+                rouge_max_total_length=512,
+                max_train_batches_in_epoch=np.inf,
+                max_evalacc_batches_in_epoch=np.inf,
+                max_evalrouge_batches_in_epoch=10,):
 
     train_data = []
 
@@ -131,7 +133,9 @@ def train_model(model,
             tokenizer,
             val_rouge_dataloader,
             device,
-            max_evalrouge_steps_count)
+            rouge_min_input_seq_len,
+            rouge_max_total_length,
+            max_evalrouge_batches_in_epoch)
         print(
             f"Epoch {epoch+1} | Train Loss: {train_loss:.3f} | "
             f"Val Loss: {val_loss:.3f} | Val Accuracy: {val_acc:.2%} "
@@ -178,7 +182,9 @@ def evaluate_rouge(model,
                    tokenizer,
                    rouge_loader,
                    device,
-                   max_steps_count=np.inf):
+                   min_input_seq_len=15,
+                   max_total_length=512,
+                   max_batches_in_epoch=np.inf):
     model.eval()
     rouge = evaluate.load("rouge")
     rouge1_list = []
@@ -186,11 +192,13 @@ def evaluate_rouge(model,
 
     with torch.no_grad():
         counter = 0
-        for x_texts, y_texts in (rouge_loader):
-            for j in tqdm(range(len(x_texts))):
-                counter += 1
-                if counter > max_steps_count:
-                    break
+        for x_texts, y_texts in tqdm(rouge_loader):
+            counter += 1
+            if counter > max_batches_in_epoch:
+                break
+            for j in (range(len(x_texts))):
+                
+                
                 x_text = x_texts[j]
                 y_text = y_texts[j]
 
@@ -199,8 +207,8 @@ def evaluate_rouge(model,
                     model,
                     tokenizer,
                     device,
-                    min_input_seq_len=15,
-                    max_total_length=128,
+                    min_input_seq_len,
+                    max_total_length,
                 )
 
                 rouge_data = rouge.compute(
@@ -253,7 +261,7 @@ def sentense_generation_inference(
     tokenizer,
     device,
     min_input_seq_len=15,
-    max_total_length=128,
+    max_total_length=512,
 ):
 
     generated_text = []
@@ -295,8 +303,8 @@ def evaluate_rouge_gpt(generator,
 
     with torch.no_grad():
         counter = 0
-        for x_texts, y_texts in loader:
-            for j in tqdm(range(len(x_texts))):
+        for x_texts, y_texts in tqdm(loader):
+            for j in range(len(x_texts)):
                 counter += 1
                 if counter > max_steps_cnt:
                     break
