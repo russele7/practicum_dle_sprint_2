@@ -186,8 +186,8 @@ def evaluate_rouge(model,
 
     with torch.no_grad():
         counter = 0
-        for x_texts, y_texts in tqdm(rouge_loader):
-            for j in range(len(x_texts)):
+        for x_texts, y_texts in (rouge_loader):
+            for j in tqdm(range(len(x_texts))):
                 counter += 1
                 if counter > max_steps_count:
                     break
