@@ -229,6 +229,57 @@ def evaluate_rouge(model,
     return rouge1_average, rouge2_average
 
 
+def evaluate_rouge_gpt(generator,
+                       loader,
+                       gen_max_length=512,
+                       gen_num_return_sequences=1,
+                       gen_do_sample=True,
+                       gen_top_p=0.95,
+                       gen_temperature=0.8,
+                       max_batches_count=np.inf):
+    generator.model.eval()
+    rouge = evaluate.load("rouge")
+    rouge1_list = []
+    rouge2_list = []
+
+    with torch.no_grad():
+        counter = 0
+        for x_texts, y_texts in tqdm(loader):
+            counter += 1
+            if counter > max_batches_count:
+                break
+            for j in range(len(x_texts)):
+                x_text = x_texts[j]
+                y_text = y_texts[j]
+
+                out = generator(
+                    x_text,
+                    max_length=gen_max_length,
+                    num_return_sequences=gen_num_return_sequences,
+                    do_sample=gen_do_sample,      # стохастическая генерация
+                    top_p=gen_top_p,          # nucleus sampling
+                    temperature=gen_temperature
+                )
+                predict_text = out[0]["generated_text"][len(x_text)+1:]
+
+                rouge_data = rouge.compute(
+                    predictions=[predict_text], references=[y_text])
+                rouge1_list.append(rouge_data['rouge1'])
+                rouge2_list.append(rouge_data['rouge2'])
+
+                if rouge_data['rouge2'] > 0.3:
+                    print(
+                        f'ROUGE1 = {rouge_data["rouge1"]} '
+                        f'ROUGE2 = {rouge_data["rouge2"]}\n'
+                        f'y_text: {y_text}\n'
+                        f'predict_text: {predict_text}\n'
+                    )
+
+    rouge1_average = sum(rouge1_list) / len(rouge1_list)
+    rouge2_average = sum(rouge2_list) / len(rouge2_list)
+    return rouge1_average, rouge2_average
+
+
 def word_generation_inference(
     input_text,
     model,
@@ -286,57 +337,6 @@ def sentense_generation_inference(
         generated_text.append(generated_word)
 
     return ' '.join(generated_text)
-
-
-def evaluate_rouge_gpt(generator,
-                       loader,
-                       gen_max_length=512,
-                       gen_num_return_sequences=1,
-                       gen_do_sample=True,
-                       gen_top_p=0.95,
-                       gen_temperature=0.8,
-                       max_steps_cnt=np.inf):
-    generator.model.eval()
-    rouge = evaluate.load("rouge")
-    rouge1_list = []
-    rouge2_list = []
-
-    with torch.no_grad():
-        counter = 0
-        for x_texts, y_texts in tqdm(loader):
-            for j in range(len(x_texts)):
-                counter += 1
-                if counter > max_steps_cnt:
-                    break
-                x_text = x_texts[j]
-                y_text = y_texts[j]
-
-                out = generator(
-                    x_text,
-                    max_length=gen_max_length,
-                    num_return_sequences=gen_num_return_sequences,
-                    do_sample=gen_do_sample,      # стохастическая генерация
-                    top_p=gen_top_p,          # nucleus sampling
-                    temperature=gen_temperature
-                )
-                predict_text = out[0]["generated_text"][len(x_text)+1:]
-
-                rouge_data = rouge.compute(
-                    predictions=[predict_text], references=[y_text])
-                rouge1_list.append(rouge_data['rouge1'])
-                rouge2_list.append(rouge_data['rouge2'])
-
-                if rouge_data['rouge2'] > 0.3:
-                    print(
-                        f'ROUGE1 = {rouge_data["rouge1"]} '
-                        f'ROUGE2 = {rouge_data["rouge2"]}\n'
-                        f'y_text: {y_text}\n'
-                        f'predict_text: {predict_text}\n'
-                    )
-
-    rouge1_average = sum(rouge1_list) / len(rouge1_list)
-    rouge2_average = sum(rouge2_list) / len(rouge2_list)
-    return rouge1_average, rouge2_average
 
 
 def pretty_output(input_text, true_ouput, rnn_generation, gpt_generation):
