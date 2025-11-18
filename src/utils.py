@@ -97,11 +97,13 @@ def train_model(model,
                 criterion,
                 device,
                 n_epochs=2,
+                rouge_flg=False,
                 rouge_min_input_seq_len=15,
                 rouge_max_total_length=512,
                 max_train_batches_in_epoch=np.inf,
                 max_evalacc_batches_in_epoch=np.inf,
-                max_evalrouge_batches_in_epoch=10,):
+                max_evalrouge_batches_in_epoch=10,
+                ):
 
     train_data = []
 
@@ -128,29 +130,52 @@ def train_model(model,
             criterion,
             device,
             max_evalacc_batches_in_epoch)
-        val_rouge1, val_rouge2 = evaluate_rouge(
-            model,
-            tokenizer,
-            val_rouge_dataloader,
-            device,
-            rouge_min_input_seq_len,
-            rouge_max_total_length,
-            max_evalrouge_batches_in_epoch)
+        
+        if rouge_flg:
+            val_rouge1, val_rouge2 = evaluate_rouge(
+                model,
+                tokenizer,
+                val_rouge_dataloader,
+                device,
+                rouge_min_input_seq_len,
+                rouge_max_total_length,
+                max_evalrouge_batches_in_epoch)
+            train_data.append(
+                {
+                    'epoch': epoch+1,
+                    'train_loss': train_loss,
+                    'val_loss': val_loss,
+                    'val_acc': val_acc,
+                    'val_rouge1': val_rouge1,
+                    'val_rouge2': val_rouge2,
+                }
+            )
+            rouge_report = f"Val_rouge1 {val_rouge1:.4f} | Val_rouge2 {val_rouge2:.4f}"
+        else:
+            val_rouge1, val_rouge2 = None, None
+            print(
+                f"Epoch {epoch+1} | Train Loss: {train_loss:.3f} | "
+                f"Val Loss: {val_loss:.3f} | Val Accuracy: {val_acc:.2%} "
+                # f"Val_rouge1 {val_rouge1:.4f} | Val_rouge2 {val_rouge2:.4f}"
+            )
+            
+            rouge_report = ""
         print(
-            f"Epoch {epoch+1} | Train Loss: {train_loss:.3f} | "
-            f"Val Loss: {val_loss:.3f} | Val Accuracy: {val_acc:.2%} "
-            f"Val_rouge1 {val_rouge1:.4f} | Val_rouge2 {val_rouge2:.4f}"
+                f"Epoch {epoch+1} | Train Loss: {train_loss:.3f} | "
+                f"Val Loss: {val_loss:.3f} | Val Accuracy: {val_acc:.2%} {rouge_report}"
+                
         )
         train_data.append(
-            {
-                'epoch': epoch+1,
-                'train_loss': train_loss,
-                'val_loss': val_loss,
-                'val_acc': val_acc,
-                'val_rouge1': val_rouge1,
-                'val_rouge2': val_rouge2,
-            }
-        )
+                {
+                    'epoch': epoch+1,
+                    'train_loss': train_loss,
+                    'val_loss': val_loss,
+                    'val_acc': val_acc,
+                    'val_rouge1': val_rouge1,
+                    'val_rouge2': val_rouge2,
+                }
+            )
+    
     return train_data
 
 
